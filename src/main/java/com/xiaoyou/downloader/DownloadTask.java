@@ -1,6 +1,6 @@
 package com.xiaoyou.downloader;
 
-import com.xiaoyou.downloader.constant.Errors;
+import com.xiaoyou.downloader.constant.Error;
 import com.xiaoyou.downloader.utils.MD5Utils;
 
 import java.io.File;
@@ -12,46 +12,44 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static com.xiaoyou.downloader.constant.DefaultData.BLUE;
+import static com.xiaoyou.downloader.constant.DefaultData.RESET;
 import static com.xiaoyou.downloader.utils.HttpUtils.*;
 
 public class DownloadTask implements Runnable {
-    
+
     private final String taskId;
+    private final String fileName;
     private final String url;
     private final String savePath;
     private final int threadCount;
     private final String expectedMd5;
     private final DownloadListener listener;
-    
-    public DownloadTask(String taskId, String url, String savePath, int threadCount, String expectedMd5, DownloadListener listener) {
+
+    public DownloadTask(String taskId, String fileName, String url, String savePath, int threadCount, String expectedMd5, DownloadListener listener) {
         this.taskId = taskId;
+        this.fileName = fileName;
         this.url = url;
         this.savePath = savePath;
         this.threadCount = threadCount;
         this.expectedMd5 = expectedMd5;
         this.listener = listener;
     }
-    
+
     // 启动下载任务
     public void run() {
         try {
-            System.out.println("任务 " + taskId + " 启动中...");
+            System.out.println(BLUE + "文件 " + fileName + " 开始下载..." + RESET);
+
+            // 检查目标文件是否已存在
             File finalFile = new File(savePath);
             if (finalFile.exists()) {
-                System.out.println("当前任务文件已存在！");
-                
-                String fileMd5 = MD5Utils.getFileMD5(finalFile);
-                if (!fileMd5.equalsIgnoreCase(expectedMd5)) {
-                    listener.onChecksumFailed(taskId);
-                    return;
-                } else {
-                    System.out.println("MD5 校验成功：" + fileMd5 + "=" + expectedMd5);
-                }
-                
+                listener.onFileExists(fileName);
+                listener.onFailed(fileName, "文件已存在");
                 return;
             }
-            
-            // 1. 获取文件总长度 (方便线程划分和进度统计)
+
+            //  获取文件总长度和文件名 (方便线程划分和进度统计)
             long fileSize = 0;
             try {
                 fileSize = getFileSize(url);
@@ -59,29 +57,31 @@ public class DownloadTask implements Runnable {
                 throw new RuntimeException(e);
             }
             if (fileSize <= 0) {
-                listener.onFailed(taskId, Errors.GET_FILE_SIZE_FAILED);
+                listener.onFailed(fileName, Error.GET_FILE_SIZE_FAILED);
                 return;
             }
-            
-            // 2. 检查是否支持断点续传 (206)
+
+            // 检查是否支持断点续传 (206)
             boolean isSupportResume = checkResumeSupport(url);
-            
-            listener.onIsSupportResume(isSupportResume, taskId); // 不支持断点续传 回调
-            
             if (!isSupportResume) {
-                listener.onFailed(taskId, Errors.FILE_NOT_SUPPORT_RESUME);
+                listener.onNotSupportResume(fileName); // 出发
+                listener.onFailed(fileName, Error.FILE_NOT_SUPPORT_RESUME);
                 return;
             }
-            
-            // 3. 划分线程区间
+
+            // 划分线程区间
             long partSize = fileSize / threadCount;
-            
-            // 4.  创建线程数组
+
+            // 存储临时分片文件
             File[] tempFiles = new File[threadCount];
+
+            // 创建固定大小的线程池，用于并发执行多个下载线程 (每个线程负责一个文件分片)
             ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+
+            // 保存所有下载线程的执行结果(Future 对象)，方便后续等待全部下载完成
             List<Future<?>> futures = new ArrayList<>();
-            
-            // 新增：计算所有已存在分片的长度和
+
+            // 计算所有已存在分片的长度和
             long existingTotal = 0;
             for (int i = 0; i < threadCount; i++) {
                 File partFile = new File(savePath + ".part" + i);
@@ -89,95 +89,88 @@ public class DownloadTask implements Runnable {
                     existingTotal += partFile.length();
                 }
             }
-            
+
             // 初始化 AtomicLong，起始值是已下载的字节数
             AtomicLong totalDownloaded = new AtomicLong(existingTotal);
             final int[] lastPercent = {-1};  // 用数组包裹，方便匿名内部类修改
-            
+
             // 5. 文件分片
             for (int i = 0; i < threadCount; i++) {
                 long start = i * partSize;
                 long end = (i == threadCount - 1) ? fileSize - 1 : (start + partSize - 1);
-                
+
+
+                // 创建分片
                 File partFile = new File(savePath + ".part" + i);
-                
                 File parentDir = partFile.getParentFile();
                 if (parentDir != null && !parentDir.exists()) {
                     if (!parentDir.mkdirs()) {
                         throw new IOException("无法创建保存目录: " + parentDir.getAbsolutePath());
                     }
                 }
-                
                 tempFiles[i] = partFile;
-                
+
                 long finalFileSize = fileSize;
                 ProgressCallback progressCallback = (bytes) -> {
                     long downloaded = totalDownloaded.addAndGet(bytes);
                     int percent = (int) ((downloaded * 100) / finalFileSize);
-                    // // 调用进度回调（这里每次回调，实际可做节流优化）
-                    // listener.onProgress(taskId, percent);
-                    
-                    // 只有进度至少增长1%时才回调
+
+                    // 只有进度至少增长 1% 时才回调
                     if (percent > lastPercent[0]) {
                         lastPercent[0] = percent;
-                        listener.onProgress(taskId, percent);
+                        listener.onProgress(fileName, percent);
                     }
                 };
-                
+
                 DownloadWorker worker = new DownloadWorker(url, start, end, partFile, progressCallback);
-                futures.add(executor.submit(worker::download));
-                
-                // 线程池提交任务
+                futures.add(executor.submit(worker::download)); // 线程池提交任务
+
                 // futures.add(executor.submit(
                 //         () -> {
                 //             new DownloadWorker(url, start, end, partFile, listener).download();
                 //         }
                 // ));
             }
-            
+
             // 等待所有任务完成
             for (Future<?> future : futures) {
                 try {
                     future.get(); // 也可以捕获异常
                 } catch (Exception e) {
-                    listener.onFailed(taskId, "线程执行异常: " + e.getMessage());
+                    listener.onFailed(fileName, "线程执行异常: " + e.getMessage());
                     executor.shutdownNow();
                     return;
                 }
             }
-            
+
             // 关闭线程池
             executor.shutdown();
-            
+
             for (File part : tempFiles) {
                 if (!part.exists()) {
-                    listener.onFailed(taskId, "分片文件缺失: " + part.getAbsolutePath());
+                    listener.onFailed(fileName, "分片文件缺失: " + part.getAbsolutePath());
                     return;
                 }
             }
-            
+
             // 合并分片
             mergeFiles(List.of(tempFiles), finalFile);
-            
-            System.out.println(taskId + " 的合并已完成！");
-            
+            // System.out.println(taskId + " 的合并已完成！");
+
             // MD5 校验
             String fileMd5 = MD5Utils.getFileMD5(finalFile);
-            if ("".equals(expectedMd5)) {
-                // System.out.println("未传入待校验的 MD5 值，则不做 MD5 校验");
-            } else if (!fileMd5.equalsIgnoreCase(expectedMd5)) {
-                listener.onChecksumFailed(taskId);
-                return;
-            } else if (fileMd5.equalsIgnoreCase(expectedMd5)) {
-                // System.out.println("MD5 校验成功：" + fileMd5 + "=" + expectedMd5);
+            boolean isChecksumFailed = !fileMd5.equalsIgnoreCase(expectedMd5);
+
+            if (isChecksumFailed) {
+                listener.onChecksumFailed(fileName);
+            } else {
+                listener.onChecksumSuccess(fileName);
             }
-            
-            listener.onSuccess(taskId);
-            
+
         } catch (Exception e) {
-            listener.onFailed(taskId, e.getMessage());
+            listener.onFailed(fileName, e.getMessage());
             e.printStackTrace();
         }
     }
-    
+
 }

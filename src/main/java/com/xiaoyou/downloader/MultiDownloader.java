@@ -1,7 +1,9 @@
 package com.xiaoyou.downloader;
 
+import com.xiaoyou.downloader.constant.DefaultData;
+
 /**
- * 下载库门面类，简化用户访问入口。
+ * 下载库门面类 - 用户访问入口。
  * <p>
  * 使用示例：
  * <pre>
@@ -24,10 +26,9 @@ public class MultiDownloader {
     }
     
     /**
-     * 监听器接口直接暴露给用户
+     * 自定义一个监听器
      */
     public interface Listener extends DownloadListener {
     
     }
-    
 }

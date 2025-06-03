@@ -40,6 +40,30 @@ public class HttpUtils {
         }
     }
 
+    public static String getFileName(String fileUrl) throws IOException {
+        URL url = new URL(fileUrl);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("GET");
+        conn.connect();
+
+        // 获取 Content-Disposition 头
+        String disposition = conn.getHeaderField("Content-Disposition");
+        String fileName = null;
+
+        if (disposition != null && disposition.contains("filename=")) {
+            // 有些是 filename="abc.txt"，有些没有引号
+            int index = disposition.indexOf("filename=");
+            fileName = disposition.substring(index + 9).replaceAll("\"", "");
+        } else {
+            // 退而求其次：从 URL 末尾获取
+            String path = url.getPath();
+            fileName = path.substring(path.lastIndexOf('/') + 1);
+        }
+
+        conn.disconnect();
+        return fileName;
+    }
+
     // 判断是否支持断点续传
     public static boolean checkResumeSupport(String fileUrl) {
         try {
