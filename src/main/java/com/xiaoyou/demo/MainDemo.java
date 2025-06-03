@@ -17,12 +17,17 @@ public class MainDemo {
 
         // 添加任务
         manager.addTask(TestLink1, ExpectedMdfive1);
-        manager.addTask(TestLink2, ExpectedMdfive2, SavePath2);
-        manager.addTask(TestLink3, ExpectedMdfive3, SavePath3, ThreadCount3);
-        manager.addTask(TestLink4, ExpectedMdfive4, SavePath4, ThreadCount4, listener);
+        // manager.addTask(TestLink2, ExpectedMdfive2, SavePath2);
+        String taskId3 = manager.addTask(TestLink3, ExpectedMdfive3, SavePath3, ThreadCount3);
+        // String taskId4 = manager.addTask(TestLink4, ExpectedMdfive4, SavePath4, ThreadCount4, listener);
 
         // 启动所有任务
         manager.startAll();
+
+
+        // // 启动指定任务
+        // manager.startTask(taskId4);
+        System.out.println(taskId3);
 
     }
 

@@ -1,7 +1,6 @@
 package com.xiaoyou.demo;
 
 import com.xiaoyou.downloader.DownloadListener;
-import com.xiaoyou.downloader.MultiDownloader;
 
 import static com.xiaoyou.downloader.constant.DefaultData.DEFAULT_LISTENER;
 
@@ -10,9 +9,9 @@ public class DemoParam {
     public static final String TestLink1 = "https://dldir1.qq.com/qqfile/qq/QQNT/Windows/QQ_9.9.19_250523_x64_01.exe";
     public static final String ExpectedMdfive1 = "F56B3DEC8272C4CC7BECDCE3236153E9";
 
-    public static final String TestLink2 = "https://dldir1.qq.com/qqfile/qq/QQNT/Windows/QQ_9.9.19_250523_x64_01.exe";
-    public static final String ExpectedMdfive2 = "F56B3DEC8272C4CC7BECDCE3236153E9";
-    public static final String SavePath2 = "C:\\tasks\\multi_thread_download\\download\\QQ_9.9.19_250523_x64_01.exe";
+    public static final String TestLink2 = "https://dldir1v6.qq.com/weixin/Universal/Windows/WeChatWin.exe";
+    public static final String ExpectedMdfive2 = "A5225DB8ECC745B7C2FABE8E1D761B9F";
+    public static final String SavePath2 = "C:\\tasks\\multi_thread_download\\download\\WeChatWin.exe";
 
 
     public static final String TestLink3 = "https://dldir1.qq.com/qqfile/qq/PCQQ9.7.25/QQ9.7.25.29410.exe";
@@ -20,9 +19,9 @@ public class DemoParam {
     public static final String SavePath3 = "C:\\tasks\\multi_thread_download\\download\\QQ9.7.25.29410.exe";
     public static final Integer ThreadCount3 = 5;
 
-    public static final String TestLink4 = "https://dldir1v6.qq.com/weixin/Universal/Windows/WeChatWin.exe";
-    public static final String ExpectedMdfive4 = "A5225DB8ECC745B7C2FABE8E1D761B9F";
-    public static final String SavePath4 = "C:\\tasks\\multi_thread_download\\download\\WeChatWin.exe";
+    public static final String TestLink4 = "https://official-package.wpscdn.cn/wps/download/WPS_Setup_21171.exe";
+    public static final String ExpectedMdfive4 = "1C97E0D5AA440BA4165417B260F7AFF2";
+    public static final String SavePath4 = "C:\\tasks\\multi_thread_download\\download\\WPS_Setup_21171.exe";
     public static final Integer ThreadCount4 = 5;
 
     public static final DownloadListener listener = DEFAULT_LISTENER;

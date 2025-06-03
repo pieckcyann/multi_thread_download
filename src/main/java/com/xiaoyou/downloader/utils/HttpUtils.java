@@ -1,11 +1,8 @@
 package com.xiaoyou.downloader.utils;
 
-import java.io.IOException;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLConnection;
-
-import java.io.*;
 import java.util.List;
 
 public class HttpUtils {
@@ -28,8 +25,8 @@ public class HttpUtils {
 
         // 2. 只请求头部信息
         connection.setRequestMethod("HEAD");
-        connection.setConnectTimeout(5000);
-        connection.setReadTimeout(5000);
+        connection.setConnectTimeout(10000);
+        connection.setReadTimeout(10000);
 
         // 3. 校验响应码
         int responseCode = connection.getResponseCode();
